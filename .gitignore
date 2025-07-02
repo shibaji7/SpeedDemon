@@ -7,6 +7,7 @@ __pycache__/
 *.so
 
 figures/
+tmp/
 # Distribution / packaging
 .Python
 build/
