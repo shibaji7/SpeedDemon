@@ -168,7 +168,9 @@ def generate_fti_profiles(folder, fig_title="", stn="", flim=[3.5, 4.5]):
         0.95, 1.05, r"(A) $f_0$=[2.0-2.3] MHz", ha="right", va="center", transform=ax.transAxes
     )
     ax.set_xticklabels([])
-    ax.axvline(dt.datetime(2022, 8, 22, 1, 16), ls="--", lw=1.5, color="r")
+    ax.axvline(dt.datetime(2022, 8, 22, 1, 16), ls="--", lw=0.5, color="k")
+    ax.axvline(dt.datetime(2022, 8, 22, 1, 17, 26), ls="--", lw=1.5, color="red")
+    ax.axvline(dt.datetime(2022, 8, 22, 1, 21, 9), ls="--", lw=1.5, color="red")
 
     flim = [2.9, 3.2]
     o = rti[
@@ -197,7 +199,9 @@ def generate_fti_profiles(folder, fig_title="", stn="", flim=[3.5, 4.5]):
     ax.text(
         0.95, 1.05, fr"(B) $f_0$=[{flim[0]}-{flim[1]}] MHz", ha="right", va="center", transform=ax.transAxes
     )
-    ax.axvline(dt.datetime(2022, 8, 22, 1, 16), ls="--", lw=1.5, color="r")
+    ax.axvline(dt.datetime(2022, 8, 22, 1, 16), ls="--", lw=0.5, color="k")
+    ax.axvline(dt.datetime(2022, 8, 22, 1, 17, 26), ls="--", lw=1.5, color="red")
+    ax.axvline(dt.datetime(2022, 8, 22, 1, 21, 9), ls="--", lw=1.5, color="red")
 
     
     i.save(os.path.join("tmp", f"jgr.png"))
