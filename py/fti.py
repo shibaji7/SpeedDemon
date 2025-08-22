@@ -26,8 +26,8 @@ def generate_fti_profiles(folder, fig_title="", stn="", flim=[3.5, 4.5]):
             xtick_locator=mdates.MinuteLocator(interval=10),
             date_format=r"$%H^{%M}$",
             xdate_lims=[
-                dt.datetime(2022, 8, 22, 1),
-                dt.datetime(2022, 8, 22, 2),
+                dt.datetime(2022, 8, 24, 1),
+                dt.datetime(2022, 8, 24, 2),
             ],
         )
         pass
@@ -136,7 +136,7 @@ def generate_fti_profiles(folder, fig_title="", stn="", flim=[3.5, 4.5]):
             & (o.frequency <= 4)
         ]
         rti = pd.concat([rti, o])
-    fig_title = "WI973/01-02 UT, 22 August 2022"
+    fig_title = f"WI973/01-02 UT, {date.strftime('%d %b %Y')}"
     i = Ionogram(fig_title="", nrows=2, ncols=1, figsize=(6, 3))
     o = rti[
         (rti.frequency >= 2)
@@ -157,8 +157,8 @@ def generate_fti_profiles(folder, fig_title="", stn="", flim=[3.5, 4.5]):
         del_ticks = False,
         xtick_locator = mdates.MinuteLocator(interval=10),
         xdate_lims = [
-            dt.datetime(2022, 8, 22, 1),
-            dt.datetime(2022, 8, 22, 2),
+            dt.datetime(2022, 8, 24, 1),
+            dt.datetime(2022, 8, 24, 2),
         ],
     )
     ax.text(
@@ -168,9 +168,9 @@ def generate_fti_profiles(folder, fig_title="", stn="", flim=[3.5, 4.5]):
         0.95, 1.05, r"(A) $f_0$=[2.0-2.3] MHz", ha="right", va="center", transform=ax.transAxes
     )
     ax.set_xticklabels([])
-    ax.axvline(dt.datetime(2022, 8, 22, 1, 16), ls="--", lw=0.5, color="k")
-    ax.axvline(dt.datetime(2022, 8, 22, 1, 17, 26), ls="--", lw=1.5, color="red")
-    ax.axvline(dt.datetime(2022, 8, 22, 1, 21, 9), ls="--", lw=1.5, color="red")
+    ax.axvline(dt.datetime(2022, 8, 24, 1, 16), ls="--", lw=0.5, color="k")
+    ax.axvline(dt.datetime(2022, 8, 24, 1, 17, 26), ls="--", lw=1.5, color="red")
+    ax.axvline(dt.datetime(2022, 8, 24, 1, 21, 9), ls="--", lw=1.5, color="red")
 
     flim = [2.9, 3.2]
     o = rti[
@@ -192,16 +192,16 @@ def generate_fti_profiles(folder, fig_title="", stn="", flim=[3.5, 4.5]):
         add_cbar = True,
         xtick_locator = mdates.MinuteLocator(interval=10),
         xdate_lims = [
-            dt.datetime(2022, 8, 22, 1),
-            dt.datetime(2022, 8, 22, 2),
+            dt.datetime(2022, 8, 24, 1),
+            dt.datetime(2022, 8, 24, 2),
         ],
     )
     ax.text(
         0.95, 1.05, fr"(B) $f_0$=[{flim[0]}-{flim[1]}] MHz", ha="right", va="center", transform=ax.transAxes
     )
-    ax.axvline(dt.datetime(2022, 8, 22, 1, 16), ls="--", lw=0.5, color="k")
-    ax.axvline(dt.datetime(2022, 8, 22, 1, 17, 26), ls="--", lw=1.5, color="red")
-    ax.axvline(dt.datetime(2022, 8, 22, 1, 21, 9), ls="--", lw=1.5, color="red")
+    ax.axvline(dt.datetime(2022, 8, 24, 1, 16), ls="--", lw=0.5, color="k")
+    ax.axvline(dt.datetime(2022, 8, 24, 1, 17, 26), ls="--", lw=1.5, color="red")
+    ax.axvline(dt.datetime(2022, 8, 24, 1, 21, 9), ls="--", lw=1.5, color="red")
 
     
     i.save(os.path.join("tmp", f"jgr.png"))
@@ -210,9 +210,10 @@ def generate_fti_profiles(folder, fig_title="", stn="", flim=[3.5, 4.5]):
 
 
 ## Analyzing the dataset form Speed Deamon 2022
-for doy in range(234, 235, 1):
+for doy in range(236, 237, 1):
     stn = "WI937"
     date = dt.datetime(2022, 1, 1) + dt.timedelta(days=doy - 1)
+    print(date)
     fig_title = f"Speed Demon / {date.strftime('%Y-%m-%d')}"
 
     generate_fti_profiles(
