@@ -85,7 +85,7 @@ def generate_fti_profiles(folder, fig_title="", stn="", flim=[3.5, 4.5]):
         xtick_locator = mdates.MinuteLocator(interval=10),
         xdate_lims = [
             dt.datetime(2022, 8, 22, 1),
-            dt.datetime(2022, 8, 22, 2),
+            dt.datetime(2022, 8, 22, 1, 40),
         ],
     )
     ax.text(
