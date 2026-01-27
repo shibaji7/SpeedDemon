@@ -132,7 +132,7 @@ def generate_fti_profiles(folder, fig_title="", stn="", flim=[3.5, 4.5]):
 
     
     i.save(os.path.join("tmp", f"jgr.png"))
-    i.save(os.path.join("tmp", f"jgr.eps"))
+    i.save(os.path.join("tmp", f"jgr.pdf"))
     i.close()
     return
 
