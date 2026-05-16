@@ -152,20 +152,17 @@ def lomb_scargle_power_series(
     # ── Figure layout ─────────────────────────────────────────────────────────
     # Row 0 (full): RTI (A)
     # Row 1 (full): time series (B)
-    # Row 2: LS zoomed 1–20 min (C) | LS full range (D)
-    # Row 3: FFT zoomed 1–20 min (E) | FFT full range (F)
-    fig = plt.figure(figsize=(10, 12))
+    # Row 2: LS zoomed 1–20 min (C) | FFT zoomed 1–20 min (E)
+    fig = plt.figure(figsize=(8, 7))
     gs  = fig.add_gridspec(
-        4, 2,
-        height_ratios=[1, 1, 2, 2],
+        3, 2,
+        height_ratios=[1, 1, 2],
         hspace=0.50, wspace=0.35,
     )
     ax_rti      = fig.add_subplot(gs[0, :])   # A — full-width RTI
     ax_ts       = fig.add_subplot(gs[1, :])   # B — full-width time series
     ax_ls_zoom  = fig.add_subplot(gs[2, 0])   # C — LS zoomed
-    ax_ls_full  = fig.add_subplot(gs[2, 1])   # D — LS full range
-    ax_fft_zoom = fig.add_subplot(gs[3, 0])   # E — FFT zoomed
-    ax_fft_full = fig.add_subplot(gs[3, 1])   # F — FFT full range
+    ax_fft_zoom = fig.add_subplot(gs[2, 1])   # E — FFT zoomed
 
     # Panel A — RTI at target height ± tol (pcolormesh)
     piv = (
@@ -176,7 +173,9 @@ def lomb_scargle_power_series(
     T, H = np.meshgrid(t_num, h_edges)
     pcm = ax_rti.pcolormesh(T, H, piv.values.T, cmap="Spectral",
                              vmin=40, vmax=70, shading="nearest")
-    plt.colorbar(pcm, ax=ax_rti, label="O-mode Power, dB", pad=0.02)
+    pos  = ax_rti.get_position()
+    cax  = fig.add_axes([pos.x1 + 0.01, pos.y0, 0.015, pos.height])
+    fig.colorbar(pcm, cax=cax, label="O-mode Power, dB")
     ax_rti.axhline(height_km, color="k", ls="--", lw=0.8,
                    label=f"{height_km} km")
     ax_rti.set_ylabel("Virtual Height, km")
@@ -203,59 +202,29 @@ def lomb_scargle_power_series(
         fontsize=9, loc="left",
     )
 
-    # ── FAP levels ────────────────────────────────────────────────────────────
-    fap_levels = [0.01, 0.001]
-    fap_powers = [ls.false_alarm_level(f) for f in fap_levels]
-    fap_colors = ["red", "darkorange"]
-    fap_labels = ["FAP 1%", "FAP 0.1%"]
-
-    def _decorate_ls(ax, periods, lsp, xlim, label):
-        ax.plot(periods, lsp, color="k", lw=0.8)
-        for fp, fc, fl in zip(fap_powers, fap_colors, fap_labels):
-            ax.axhline(fp, color=fc, ls="--", lw=0.8, label=fl)
-        peak_idx = np.argmax(lsp)
-        ax.axvline(periods[peak_idx], color="steelblue", ls=":", lw=1.0,
-                   label=f"Peak {periods[peak_idx]:.1f} min")
-        ax.set_xlabel("Period, min")
-        ax.set_ylabel("LS Power (detrended)")
-        ax.set_xlim(xlim)
-        ax.set_ylim(bottom=0, top=300)
-        ax.legend(fontsize=7, loc="upper right")
-        ax.set_title(label, fontsize=9, loc="left")
-
     # Panel C — LS zoomed (1–20 min)
-    _decorate_ls(ax_ls_zoom, periods_zoom, ls_power_zoom,
-                 zoom_lim, f"(C) LS zoomed [{zoom_lim[0]}–{zoom_lim[1]} min] — {height_km} km")
+    ax_ls_zoom.plot(periods_zoom, ls_power_zoom, color="k", lw=0.8)
+    ax_ls_zoom.set_xlabel("Period, min")
+    ax_ls_zoom.set_ylabel("LS Power (detrended)")
+    ax_ls_zoom.set_xlim(zoom_lim)
+    ax_ls_zoom.set_ylim(0, 300)
+    ax_ls_zoom.set_xticks([2, 5, 8, 12, 15])
+    ax_ls_zoom.axvline(7.25, ls="--", lw=0.8, color="m", zorder=5)
+    ax_ls_zoom.set_title(f"(C) LS [{zoom_lim[0]}–{zoom_lim[1]} min] — {height_km} km",
+                         fontsize=9, loc="left")
 
-    # Panel D — LS full range
-    _decorate_ls(ax_ls_full, periods_min, ls_power,
-                 period_lim_min, f"(D) LS full [{period_lim_min[0]}–{period_lim_min[1]} min] — {height_km} km")
-
-    # ── FFT panels ────────────────────────────────────────────────────────────
-    def _decorate_fft(ax, mask, xlim, label):
-        if mask.any():
-            ax.plot(fft_period_min[mask], fft_amp_pos[mask], color="k", lw=0.8)
-            peak_idx = np.argmax(fft_amp_pos[mask])
-            peak_per = fft_period_min[mask][peak_idx]
-            ax.axvline(peak_per, color="steelblue", ls=":", lw=1.0,
-                       label=f"Peak {peak_per:.1f} min")
-            ax.legend(fontsize=7, loc="upper right")
-        ax.set_xlabel("Period, min")
-        ax.set_ylabel("FFT Amplitude (detrended)")
-        ax.set_xlim(xlim)
-        ax.set_ylim(bottom=0, top=5)
-        ax.set_title(label, fontsize=9, loc="left")
-
+    # Panel E — FFT zoomed (1–20 min)
     zoom_mask = (fft_period_min >= zoom_lim[0]) & (fft_period_min <= zoom_lim[1])
-    full_mask  = in_range
-
-    # Panel E — FFT zoomed
-    _decorate_fft(ax_fft_zoom, zoom_mask, zoom_lim,
-                  f"(E) FFT zoomed [{zoom_lim[0]}–{zoom_lim[1]} min] — {height_km} km")
-
-    # Panel F — FFT full range
-    _decorate_fft(ax_fft_full, full_mask, period_lim_min,
-                  f"(F) FFT full [{period_lim_min[0]}–{period_lim_min[1]} min] — {height_km} km")
+    if zoom_mask.any():
+        ax_fft_zoom.plot(fft_period_min[zoom_mask], fft_amp_pos[zoom_mask],
+                         color="k", lw=0.8)
+    ax_fft_zoom.set_xlabel("Period, min")
+    ax_fft_zoom.set_ylabel("FFT Amplitude (detrended)")
+    ax_fft_zoom.set_xlim(zoom_lim)
+    ax_fft_zoom.set_title(f"(E) FFT [{zoom_lim[0]}–{zoom_lim[1]} min] — {height_km} km",
+                          fontsize=9, loc="left")
+    ax_fft_zoom.set_xticks([2, 5, 8, 12, 15])
+    ax_fft_zoom.axvline(7.4, ls="--", lw=0.8, color="m", zorder=5)
 
     os.makedirs(os.path.dirname(fname) or ".", exist_ok=True)
     fig.savefig(fname, dpi=150, bbox_inches="tight")
@@ -298,24 +267,33 @@ def lomb_scargle_power_series(
 # RTI + jgr.png (original two-panel figure)
 # ---------------------------------------------------------------------------
 
+FREQ_BANDS = [
+    ("a", (2.0, 2.3)),
+    ("b", (2.3, 2.6)),
+    ("c", (2.6, 2.9)),
+    ("d", (2.9, 3.2)),
+]
+
+
 def generate_fti_profiles(folder, fig_title="", stn=""):
     mode = "O"
 
-    csv_a = os.path.join("tmp", "rti_band_a.csv")
-    csv_b = os.path.join("tmp", "rti_band_b.csv")
-    band_a = (2.0, 2.3)
-    band_b = (2.9, 3.2)
+    band_csvs = {
+        tag: os.path.join("tmp", f"rti_band_{tag}.csv")
+        for tag, _ in FREQ_BANDS
+    }
 
     xdate_lims = [
         dt.datetime(2022, 8, 22, 1),
         dt.datetime(2022, 8, 22, 1, 40),
     ]
 
-    if os.path.exists(csv_a) and os.path.exists(csv_b):
+    if all(os.path.exists(p) for p in band_csvs.values()):
         logger.info("Loading band CSVs from disk (skipping DataSource load)")
-        rti_a = pd.read_csv(csv_a, parse_dates=["time"])
-        rti_b = pd.read_csv(csv_b, parse_dates=["time"])
-        rti   = pd.concat([rti_a, rti_b], ignore_index=True)
+        band_dfs = {
+            tag: pd.read_csv(p, parse_dates=["time"])
+            for tag, p in band_csvs.items()
+        }
     else:
         ds = DataSource(source_folder=folder)
         ds.load_data_sets()
@@ -336,14 +314,17 @@ def generate_fti_profiles(folder, fig_title="", stn=""):
                 ],
             )
 
-        rti   = _build_rti(ds, mode=mode)
-        rti_a = rti[(rti.frequency >= band_a[0]) & (rti.frequency <= band_a[1])].copy()
-        rti_b = rti[(rti.frequency >= band_b[0]) & (rti.frequency <= band_b[1])].copy()
+        rti = _build_rti(ds, mode=mode)
         os.makedirs("tmp", exist_ok=True)
-        rti_a.to_csv(csv_a, index=False)
-        rti_b.to_csv(csv_b, index=False)
-        logger.info(f"Saved: {csv_a}")
-        logger.info(f"Saved: {csv_b}")
+        band_dfs = {}
+        for tag, (flo, fhi) in FREQ_BANDS:
+            df = rti[(rti.frequency >= flo) & (rti.frequency <= fhi)].copy()
+            df.to_csv(band_csvs[tag], index=False)
+            logger.info(f"Saved: {band_csvs[tag]}")
+            band_dfs[tag] = df
+
+    rti_a = band_dfs["a"]
+    rti_b = band_dfs["d"]   # outer bands for jgr.png (2.0-2.3 and 2.9-3.2)
 
     # ── Two-panel RTI figure (jgr.png) ───────────────────────────────────────
     i = Ionogram(fig_title="", nrows=2, ncols=1, figsize=(6, 3))
@@ -381,7 +362,7 @@ def generate_fti_profiles(folder, fig_title="", stn=""):
         xtick_locator=mdates.MinuteLocator(interval=10),
         xdate_lims=xdate_lims,
     )
-    ax.text(0.95, 1.05, fr"(B) $f_0$=[{band_b[0]}-{band_b[1]}] MHz",
+    ax.text(0.95, 1.05, r"(B) $f_0$=[2.9-3.2] MHz",
             ha="right", va="center", transform=ax.transAxes)
     for t, ls, lw in [
         (dt.datetime(2022, 8, 22, 1, 16),     "--", 0.5),
@@ -395,13 +376,14 @@ def generate_fti_profiles(folder, fig_title="", stn=""):
     i.close()
 
     # ── Lomb-Scargle periodogram (jgr_ls.png) ────────────────────────────────
+    rti_all = pd.concat(list(band_dfs.values()), ignore_index=True)
     lomb_scargle_power_series(
-        rti,
-        height_km=105.0,
+        rti_all,
+        height_km=102.5,
         height_tol_km=2.0,
         freq_lim=(2., 2.3),
         mode=mode,
-        period_lim_min=(1.0, 20.0),
+        period_lim_min=(2.0, 15.0),
         n_periods=1000,
         fname="tmp/jgr_ls.png",
         fig_title=fig_title,
