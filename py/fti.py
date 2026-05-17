@@ -90,7 +90,7 @@ def lomb_scargle_power_series(
         (rti.range >= height_km - height_tol_km) &
         (rti.range <= height_km + height_tol_km) &
         (rti.frequency >= freq_lim[0]) &
-        (rti.frequency <= freq_lim[1])
+        (rti.frequency <= freq_lim[1]) 
     ].copy()
 
     if sel.empty:
