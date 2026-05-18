@@ -389,7 +389,85 @@ def generate_fti_profiles(folder, fig_title="", stn=""):
         fig_title=fig_title,
         xdate_lims=xdate_lims,
     )
+
+    # ── Panel C standalone (jgr_ls_panel.png) ────────────────────────────────
+    plot_ls_panel(
+        rti_all,
+        height_km=102.5,
+        height_tol_km=2.0,
+        freq_lim=(2., 2.3),
+        mode=mode,
+        period_lim_min=(2.0, 15.0),
+        n_periods=1000,
+        fname="tmp/jgr_ls_panel.png",
+    )
     return
+
+
+# ---------------------------------------------------------------------------
+# Panel C standalone figure
+# ---------------------------------------------------------------------------
+
+def plot_ls_panel(
+    rti: pd.DataFrame,
+    height_km: float = 102.5,
+    height_tol_km: float = 2.0,
+    freq_lim: tuple = (2.0, 2.3),
+    mode: str = "O",
+    period_lim_min: tuple = (2.0, 15.0),
+    n_periods: int = 1000,
+    fname: str = "tmp/jgr_ls_panel.png",
+):
+    """Save Panel C (LS zoomed) as a standalone figure."""
+    power_col = f"{mode}_mode_power"
+
+    sel = rti[
+        (rti["range"] >= height_km - height_tol_km) &
+        (rti["range"] <= height_km + height_tol_km) &
+        (rti["frequency"] >= freq_lim[0]) &
+        (rti["frequency"] <= freq_lim[1])
+    ].copy()
+    if sel.empty:
+        logger.warning("plot_ls_panel: no data in selection — skipping")
+        return
+
+    ts = (
+        sel.groupby("time")[power_col]
+        .mean().reset_index().sort_values("time").dropna(subset=[power_col])
+    )
+    if len(ts) < 5:
+        logger.warning("plot_ls_panel: too few samples — skipping")
+        return
+
+    times_dt  = ts["time"].to_numpy()
+    power     = ts[power_col].to_numpy(dtype=float)
+    t_sec     = (times_dt - times_dt[0]).astype("timedelta64[s]").astype(float)
+    power_det = detrend(power, type="linear")
+
+    zoom_lim     = (period_lim_min[0], min(20.0, period_lim_min[1]))
+    periods_zoom = np.linspace(zoom_lim[0], zoom_lim[1], n_periods)
+    ls_power_zoom = LombScargle(t_sec, power_det, normalization="psd").power(
+        1.0 / (periods_zoom * 60.0)
+    )
+
+    fig, ax = plt.subplots(figsize=(5, 4))
+    ax.plot(periods_zoom, ls_power_zoom, color="k", lw=0.8)
+    ax.set_xlabel("Period, min")
+    ax.set_ylabel("LS Power (detrended)")
+    ax.set_xlim([2, 10])
+    ax.set_ylim(0, 200)
+    ax.set_xticks([2, 4, 6, 8, 10])
+    ax.axvline(7.25, ls="--", lw=0.8, color="m", zorder=5)
+    ax.text(7.5, 150, r"$\tau$=7 min 15 sec", ha="left", va="center", color="m", fontsize=9, rotation=90)
+    ax.set_title(
+        f" LS [{freq_lim[0]}–{freq_lim[1]} MHz] @ {height_km} $\pm${height_tol_km} km",
+        fontsize=9, loc="left",
+    )
+
+    os.makedirs(os.path.dirname(fname) or ".", exist_ok=True)
+    fig.savefig(fname, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    logger.info(f"Saved: {fname}")
 
 
 # ---------------------------------------------------------------------------
