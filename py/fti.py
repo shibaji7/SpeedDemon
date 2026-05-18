@@ -272,10 +272,20 @@ FREQ_BANDS = [
     ("b", (2.3, 2.6)),
     ("c", (2.6, 2.9)),
     ("d", (2.9, 3.2)),
+    ("e", (3.2, 3.5)),
+    ("f", (3.5, 3.8)),
+    ("g", (3.8, 4.1)),
 ]
 
 
-def generate_fti_profiles(folder, fig_title="", stn=""):
+def generate_fti_profiles(
+    folder, fig_title="", 
+    stn="", bands=["a", "d"],
+    height_km=104.0,
+    height_tol_km=2.0,
+    period_lim_min=(2.0, 15.0),
+    n_periods=1000,
+):
     mode = "O"
 
     band_csvs = {
@@ -284,8 +294,8 @@ def generate_fti_profiles(folder, fig_title="", stn=""):
     }
 
     xdate_lims = [
-        dt.datetime(2022, 8, 22, 1),
-        dt.datetime(2022, 8, 22, 1, 40),
+        dt.datetime(2022, 8, 24, 1),
+        dt.datetime(2022, 8, 24, 1, 40),
     ]
 
     if all(os.path.exists(p) for p in band_csvs.values()):
@@ -309,8 +319,8 @@ def generate_fti_profiles(folder, fig_title="", stn=""):
                 xtick_locator=mdates.MinuteLocator(interval=10),
                 date_format=r"$%H^{%M}$",
                 xdate_lims=[
-                    dt.datetime(2022, 8, 22, 1),
-                    dt.datetime(2022, 8, 22, 2),
+                    dt.datetime(2022, 8, 24, 1),
+                    dt.datetime(2022, 8, 24, 2),
                 ],
             )
 
@@ -323,14 +333,18 @@ def generate_fti_profiles(folder, fig_title="", stn=""):
             logger.info(f"Saved: {band_csvs[tag]}")
             band_dfs[tag] = df
 
-    rti_a = band_dfs["a"]
-    rti_b = band_dfs["d"]   # outer bands for jgr.png (2.0-2.3 and 2.9-3.2)
+    rti_band1 = band_dfs[bands[0]]
+    rti_band2 = band_dfs[bands[1]]
+    band_txts, band_freqs = {}, {}
+    for tag, (flo, fhi) in FREQ_BANDS:
+        band_txts[tag] = f"[{flo}–{fhi}] MHz"
+        band_freqs[tag] = (flo, fhi)
 
     # ── Two-panel RTI figure (jgr.png) ───────────────────────────────────────
     i = Ionogram(fig_title="", nrows=2, ncols=1, figsize=(6, 3))
 
     ax = i.add_interval_plots(
-        rti_a,
+        rti_band1,
         mode,
         xlabel="", ylabel="Virtual Height, km",
         ylim=[95, 110], add_cbar=False,
@@ -342,18 +356,18 @@ def generate_fti_profiles(folder, fig_title="", stn=""):
     )
     ax.text(0.01, 1.05, fig_title, ha="left", va="center",
             transform=ax.transAxes)
-    ax.text(0.95, 1.05, r"(A) $f_0$=[2.0-2.3] MHz", ha="right",
+    ax.text(0.95, 1.05, rf"(A) $f_0$={band_txts[bands[0]]}", ha="right",
             va="center", transform=ax.transAxes)
     ax.set_xticklabels([])
     for t, ls, lw in [
-        (dt.datetime(2022, 8, 22, 1, 16),     "--", 0.5),
-        (dt.datetime(2022, 8, 22, 1, 17, 26), "--", 1.5),
-        (dt.datetime(2022, 8, 22, 1, 21,  9), "--", 1.5),
+        (dt.datetime(2022, 8, 24, 1, 16),     "--", 0.5),
+        (dt.datetime(2022, 8, 24, 1, 17, 26), "--", 1.5),
+        (dt.datetime(2022, 8, 24, 1, 21,  9), "--", 1.5),
     ]:
         ax.axvline(t, ls=ls, lw=lw, color="k" if lw < 1 else "red", zorder=5)
 
     ax = i.add_interval_plots(
-        rti_b,
+        rti_band2,
         mode,
         noise_scale=1, xlabel="Time, UT", ylabel="Virtual Height, km",
         ylim=[95, 110], add_cbar=True,
@@ -362,29 +376,28 @@ def generate_fti_profiles(folder, fig_title="", stn=""):
         xtick_locator=mdates.MinuteLocator(interval=10),
         xdate_lims=xdate_lims,
     )
-    ax.text(0.95, 1.05, r"(B) $f_0$=[2.9-3.2] MHz",
+    ax.text(0.95, 1.05, rf"(B) $f_0$={band_txts[bands[1]]}",
             ha="right", va="center", transform=ax.transAxes)
     for t, ls, lw in [
-        (dt.datetime(2022, 8, 22, 1, 16),     "--", 0.5),
-        (dt.datetime(2022, 8, 22, 1, 17, 26), "--", 1.5),
-        (dt.datetime(2022, 8, 22, 1, 21,  9), "--", 1.5),
+        (dt.datetime(2022, 8, 24, 1, 16),     "--", 0.5),
+        (dt.datetime(2022, 8, 24, 1, 17, 26), "--", 1.5),
+        (dt.datetime(2022, 8, 24, 1, 21,  9), "--", 1.5),
     ]:
         ax.axvline(t, ls=ls, lw=lw, color="k" if lw < 1 else "red", zorder=5)
 
     i.save(os.path.join("tmp", "jgr.png"))
-    i.save(os.path.join("tmp", "jgr.pdf"))
     i.close()
 
     # ── Lomb-Scargle periodogram (jgr_ls.png) ────────────────────────────────
     rti_all = pd.concat(list(band_dfs.values()), ignore_index=True)
     lomb_scargle_power_series(
         rti_all,
-        height_km=102.5,
-        height_tol_km=2.0,
-        freq_lim=(2., 2.3),
+        height_km=height_km,
+        height_tol_km=height_tol_km,
+        freq_lim=band_freqs[bands[0]],
         mode=mode,
-        period_lim_min=(2.0, 15.0),
-        n_periods=1000,
+        period_lim_min=period_lim_min,
+        n_periods=n_periods,
         fname="tmp/jgr_ls.png",
         fig_title=fig_title,
         xdate_lims=xdate_lims,
@@ -393,12 +406,13 @@ def generate_fti_profiles(folder, fig_title="", stn=""):
     # ── Panel C standalone (jgr_ls_panel.png) ────────────────────────────────
     plot_ls_panel(
         rti_all,
-        height_km=102.5,
-        height_tol_km=2.0,
-        freq_lim=(2., 2.3),
+        height_km=height_km,
+        height_tol_km=height_tol_km,
+        freq_lims=[band_freqs[bands[0]]],
         mode=mode,
-        period_lim_min=(2.0, 15.0),
-        n_periods=1000,
+        period_lim_min=period_lim_min,
+        n_periods=n_periods,
+        colors=["k", "r"],
         fname="tmp/jgr_ls_panel.png",
     )
     return
@@ -412,55 +426,58 @@ def plot_ls_panel(
     rti: pd.DataFrame,
     height_km: float = 102.5,
     height_tol_km: float = 2.0,
-    freq_lim: tuple = (2.0, 2.3),
+    freq_lims: list = [(2.0, 2.3), (2.9, 3.2)],
     mode: str = "O",
     period_lim_min: tuple = (2.0, 15.0),
     n_periods: int = 1000,
+    colors: list = ["k", "r"],
     fname: str = "tmp/jgr_ls_panel.png",
 ):
     """Save Panel C (LS zoomed) as a standalone figure."""
     power_col = f"{mode}_mode_power"
 
-    sel = rti[
-        (rti["range"] >= height_km - height_tol_km) &
-        (rti["range"] <= height_km + height_tol_km) &
-        (rti["frequency"] >= freq_lim[0]) &
-        (rti["frequency"] <= freq_lim[1])
-    ].copy()
-    if sel.empty:
-        logger.warning("plot_ls_panel: no data in selection — skipping")
-        return
-
-    ts = (
-        sel.groupby("time")[power_col]
-        .mean().reset_index().sort_values("time").dropna(subset=[power_col])
-    )
-    if len(ts) < 5:
-        logger.warning("plot_ls_panel: too few samples — skipping")
-        return
-
-    times_dt  = ts["time"].to_numpy()
-    power     = ts[power_col].to_numpy(dtype=float)
-    t_sec     = (times_dt - times_dt[0]).astype("timedelta64[s]").astype(float)
-    power_det = detrend(power, type="linear")
-
-    zoom_lim     = (period_lim_min[0], min(20.0, period_lim_min[1]))
-    periods_zoom = np.linspace(zoom_lim[0], zoom_lim[1], n_periods)
-    ls_power_zoom = LombScargle(t_sec, power_det, normalization="psd").power(
-        1.0 / (periods_zoom * 60.0)
-    )
-
     fig, ax = plt.subplots(figsize=(5, 4))
-    ax.plot(periods_zoom, ls_power_zoom, color="k", lw=0.8)
+    for freq_lim, color in zip(freq_lims, colors):
+
+        sel = rti[
+            (rti["range"] >= height_km - height_tol_km) &
+            (rti["range"] <= height_km + height_tol_km) &
+            (rti["frequency"] >= freq_lim[0]) &
+            (rti["frequency"] <= freq_lim[1])
+        ].copy()
+        if sel.empty:
+            logger.warning("plot_ls_panel: no data in selection — skipping")
+            return
+
+        ts = (
+            sel.groupby("time")[power_col]
+            .mean().reset_index().sort_values("time").dropna(subset=[power_col])
+        )
+        if len(ts) < 5:
+            logger.warning("plot_ls_panel: too few samples — skipping")
+            return
+
+        times_dt  = ts["time"].to_numpy()
+        power     = ts[power_col].to_numpy(dtype=float)
+        t_sec     = (times_dt - times_dt[0]).astype("timedelta64[s]").astype(float)
+        power_det = detrend(power, type="linear")
+
+        zoom_lim     = (period_lim_min[0], min(20.0, period_lim_min[1]))
+        periods_zoom = np.linspace(zoom_lim[0], zoom_lim[1], n_periods)
+        ls_power_zoom = LombScargle(t_sec, power_det, normalization="psd").power(
+            1.0 / (periods_zoom * 60.0)
+        )
+        ax.plot(periods_zoom, ls_power_zoom, ls="-", color=color, lw=0.8, label=r"$f_{bin}$=["+f"{freq_lim[0]}–{freq_lim[1]}] MHz")
     ax.set_xlabel("Period, min")
     ax.set_ylabel("LS Power (detrended)")
     ax.set_xlim([2, 10])
-    ax.set_ylim(0, 200)
+    # ax.legend(loc="upper left", frameon=False, fontsize=9)
+    ax.set_ylim(0, 100)
     ax.set_xticks([2, 4, 6, 8, 10])
-    ax.axvline(7.25, ls="--", lw=0.8, color="m", zorder=5)
-    ax.text(7.5, 150, r"$\tau$=7 min 15 sec", ha="left", va="center", color="m", fontsize=9, rotation=90)
+    ax.axvline(7.6, ls="--", lw=0.8, color="m", zorder=5)
+    ax.text(7.8, 75, r"$\tau$=7 min 36 sec", ha="left", va="center", color="m", fontsize=9, rotation=90)
     ax.set_title(
-        f" LS [{freq_lim[0]}–{freq_lim[1]} MHz] @ {height_km} $\pm${height_tol_km} km",
+        f" LS @ {height_km} $\pm${height_tol_km} km, " + r"$f_{bin}$=["+f"{freq_lim[0]}–{freq_lim[1]}] MHz",
         fontsize=9, loc="left",
     )
 
@@ -474,10 +491,10 @@ def plot_ls_panel(
 # Entry point
 # ---------------------------------------------------------------------------
 
-for doy in range(234, 235):
+for doy in range(236, 237):
     stn  = "WI937"
     date = dt.datetime(2022, 1, 1) + dt.timedelta(days=doy - 1)
-    print(date)
+    bands=["a", "d"]
     fig_title = f"Speed Demon / {stn} / {date.strftime('%Y-%m-%d')}"
 
     local, remote = fetch.create_local_folder(date=date)
@@ -486,4 +503,4 @@ for doy in range(234, 235):
         remote_files=fetch.get_ngi_files_by_hour(date=date, hours=[1, 2], remote=remote),
     )
 
-    generate_fti_profiles(folder=local, fig_title=fig_title, stn=stn)
+    generate_fti_profiles(folder=local, fig_title=fig_title, stn=stn, bands=bands)
